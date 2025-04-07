@@ -1,0 +1,14 @@
+@host = http://localhost:8081
+
+### Test income salary endpoint with URL parameter
+GET {{host}}/income-salary?salary=50000&year=2022
+
+### Test income salary endpoint with form data
+POST {{host}}/income-salary
+Content-Type: application/x-www-form-urlencoded
+
+salary=75000&year=2023
+
+
+
+

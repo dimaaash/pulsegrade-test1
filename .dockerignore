@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# CI
+.github/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Binaries
+bin/
+taxapp
+
+# Testing
+**/coverage.html
+**/coverage.out
+**/*_test.go
+
+# Local development
+.vscode/
+.idea/
+
+# Temporary files
+**/tmp/
+**/*.tmp
+**/*.log
+
+# Markdown files
+*.md
+!README.md

@@ -1,0 +1,27 @@
+@host = http://localhost:5001
+
+### 2018 tax year
+GET {{host}}/tax-calculator/tax-year/2018
+
+### 2019 tax year
+GET {{host}}/tax-calculator/tax-year/2019
+
+
+### 2020 tax year
+GET {{host}}/tax-calculator/tax-year/2020
+
+
+### 2021 tax year
+GET {{host}}/tax-calculator/tax-year/2021
+
+### 2022 tax year
+GET {{host}}/tax-calculator/tax-year/2022
+
+### 2023 tax year
+GET {{host}}/tax-calculator/tax-year/2023
+
+
+### 2024 tax year
+GET {{host}}/tax-calculator/tax-year/2024
+
+

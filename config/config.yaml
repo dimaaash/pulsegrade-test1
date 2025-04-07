@@ -1,0 +1,14 @@
+taxCalculator:
+  baseUrl: http://localhost:5001/tax-calculator
+includeTaxYear: false
+port: "8080"
+circuitBreakerEnabled: true
+circuitBreaker:
+  requestThreshold: 10300  # Trip after at least 5 requests
+  failureRatio: 0.01    # 50% failure rate to trip
+  timeout: 60          # 60 seconds before trying half-open state
+  maxHalfOpenReqs: 100 # Allow up to 100 requests in half-open state
+# Logging configuration
+logging:
+  enabled: true       # Enable logging by default
+  level: "DEBUG"       # Default log level (NONE, ERROR, WARN, INFO, DEBUG)

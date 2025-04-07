@@ -1,0 +1,1237 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>benchmark: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">pulsegrade/test1/benchmark/benchmark.go (0.0%)</option>
+				
+				<option value="file1">pulsegrade/test1/cmd/taxapp/main.go (0.0%)</option>
+				
+				<option value="file2">pulsegrade/test1/config/config.go (97.2%)</option>
+				
+				<option value="file3">pulsegrade/test1/handlers/income_handler.go (71.1%)</option>
+				
+				<option value="file4">pulsegrade/test1/logger/logger.go (28.0%)</option>
+				
+				<option value="file5">pulsegrade/test1/metrics/middleware.go (0.0%)</option>
+				
+				<option value="file6">pulsegrade/test1/services/tax_calculator.go (67.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "flag"
+        "fmt"
+        "io"
+        "math/rand"
+        "net/http"
+        "net/url"
+        "strings"
+        "sync"
+        "time"
+)
+
+// Configuration options for the benchmark
+type Config struct {
+        Host         string
+        NumRequests  int
+        Concurrency  int
+        GetPercent   int
+        MinSalary    int
+        MaxSalary    int
+        MinYear      int
+        MaxYear      int
+        Verbose      bool
+        OutputFormat string
+}
+
+// Result of a single request
+type RequestResult struct {
+        Method      string
+        StatusCode  int
+        Duration    time.Duration
+        Error       error
+        ContentSize int64
+}
+
+// Results of the entire benchmark
+type BenchmarkResults struct {
+        TotalRequests      int
+        SuccessfulRequests int
+        FailedRequests     int
+        TotalDuration      time.Duration
+        MinDuration        time.Duration
+        MaxDuration        time.Duration
+        AvgDuration        time.Duration
+        RequestsPerSecond  float64
+        TotalBytes         int64
+        BytesPerSecond     float64
+        StatusCodes        map[int]int
+}
+
+func main() <span class="cov0" title="0">{
+        // Define command line flags
+        host := flag.String("host", "http://localhost:8080", "Host URL of the tax application")
+        numRequests := flag.Int("n", 100, "Total number of requests to send")
+        concurrency := flag.Int("c", 10, "Number of concurrent requests")
+        getPercent := flag.Int("get", 50, "Percentage of GET requests (versus POST)")
+        minSalary := flag.Int("min-salary", 10000, "Minimum salary value")
+        maxSalary := flag.Int("max-salary", 1000000, "Maximum salary value")
+        minYear := flag.Int("min-year", 2020, "Minimum tax year")
+        maxYear := flag.Int("max-year", 2025, "Maximum tax year")
+        verbose := flag.Bool("v", false, "Verbose output")
+        outputFormat := flag.String("o", "text", "Output format: text or json")
+
+        flag.Parse()
+
+        // Create configuration
+        config := Config{
+                Host:         *host,
+                NumRequests:  *numRequests,
+                Concurrency:  *concurrency,
+                GetPercent:   *getPercent,
+                MinSalary:    *minSalary,
+                MaxSalary:    *maxSalary,
+                MinYear:      *minYear,
+                MaxYear:      *maxYear,
+                Verbose:      *verbose,
+                OutputFormat: *outputFormat,
+        }
+
+        // Run benchmark
+        fmt.Printf("Starting benchmark against %s\n", config.Host)
+        fmt.Printf("Sending %d requests (%d%% GET, %d%% POST) with %d concurrent workers\n",
+                config.NumRequests, config.GetPercent, 100-config.GetPercent, config.Concurrency)
+
+        results := runBenchmark(config)
+
+        // Output results
+        if config.OutputFormat == "json" </span><span class="cov0" title="0">{
+                outputJSON(results)
+        }</span> else<span class="cov0" title="0"> {
+                outputText(results)
+        }</span>
+}
+
+func runBenchmark(config Config) BenchmarkResults <span class="cov0" title="0">{
+        results := make(chan RequestResult, config.NumRequests)
+        var wg sync.WaitGroup
+
+        // Prepare request distribution
+        requests := make([]string, config.NumRequests)
+        getCount := (config.NumRequests * config.GetPercent) / 100
+        for i := 0; i &lt; config.NumRequests; i++ </span><span class="cov0" title="0">{
+                if i &lt; getCount </span><span class="cov0" title="0">{
+                        requests[i] = "GET"
+                }</span> else<span class="cov0" title="0"> {
+                        requests[i] = "POST"
+                }</span>
+        }
+
+        // Shuffle to distribute GETs and POSTs
+        <span class="cov0" title="0">r := rand.New(rand.NewSource(time.Now().UnixNano()))
+        r.Shuffle(len(requests), func(i, j int) </span><span class="cov0" title="0">{
+                requests[i], requests[j] = requests[j], requests[i]
+        }</span>)
+
+        // Start worker goroutines
+        <span class="cov0" title="0">jobChan := make(chan string, config.NumRequests)
+        for i := 0; i &lt; config.Concurrency; i++ </span><span class="cov0" title="0">{
+                wg.Add(1)
+                go worker(config, jobChan, results, &amp;wg)
+        }</span>
+
+        <span class="cov0" title="0">startTime := time.Now()
+
+        // Send work to workers
+        for _, method := range requests </span><span class="cov0" title="0">{
+                jobChan &lt;- method
+        }</span>
+        <span class="cov0" title="0">close(jobChan)
+
+        // Wait for all workers to finish
+        wg.Wait()
+        close(results)
+
+        totalDuration := time.Since(startTime)
+
+        // Collect results
+        benchResults := BenchmarkResults{
+                TotalRequests: config.NumRequests,
+                TotalDuration: totalDuration,
+                MinDuration:   time.Duration(1&lt;&lt;63 - 1), // Max possible duration
+                StatusCodes:   make(map[int]int),
+        }
+
+        var totalDurationSum time.Duration
+        for result := range results </span><span class="cov0" title="0">{
+                if result.Error == nil &amp;&amp; result.StatusCode &gt;= 200 &amp;&amp; result.StatusCode &lt; 400 </span><span class="cov0" title="0">{
+                        benchResults.SuccessfulRequests++
+                }</span> else<span class="cov0" title="0"> {
+                        benchResults.FailedRequests++
+                }</span>
+
+                <span class="cov0" title="0">totalDurationSum += result.Duration
+                benchResults.TotalBytes += result.ContentSize
+
+                if result.Duration &lt; benchResults.MinDuration </span><span class="cov0" title="0">{
+                        benchResults.MinDuration = result.Duration
+                }</span>
+                <span class="cov0" title="0">if result.Duration &gt; benchResults.MaxDuration </span><span class="cov0" title="0">{
+                        benchResults.MaxDuration = result.Duration
+                }</span>
+
+                <span class="cov0" title="0">benchResults.StatusCodes[result.StatusCode]++
+
+                if config.Verbose </span><span class="cov0" title="0">{
+                        if result.Error != nil </span><span class="cov0" title="0">{
+                                fmt.Printf("%s request error: %s (%s)\n", result.Method, result.Error, result.Duration)
+                        }</span> else<span class="cov0" title="0"> {
+                                fmt.Printf("%s request: %d status (%s)\n", result.Method, result.StatusCode, result.Duration)
+                        }</span>
+                }
+        }
+
+        // Calculate derived metrics
+        <span class="cov0" title="0">if benchResults.TotalRequests &gt; 0 </span><span class="cov0" title="0">{
+                benchResults.AvgDuration = totalDurationSum / time.Duration(benchResults.TotalRequests)
+                benchResults.RequestsPerSecond = float64(benchResults.TotalRequests) / totalDuration.Seconds()
+                benchResults.BytesPerSecond = float64(benchResults.TotalBytes) / totalDuration.Seconds()
+        }</span>
+
+        <span class="cov0" title="0">return benchResults</span>
+}
+
+func worker(config Config, jobs &lt;-chan string, results chan&lt;- RequestResult, wg *sync.WaitGroup) <span class="cov0" title="0">{
+        defer wg.Done()
+
+        client := &amp;http.Client{
+                Timeout: 30 * time.Second,
+        }
+
+        // Process jobs
+        for method := range jobs </span><span class="cov0" title="0">{
+                // Generate random salary and year within specified ranges
+                salary := rand.Intn(config.MaxSalary-config.MinSalary+1) + config.MinSalary
+                year := rand.Intn(config.MaxYear-config.MinYear+1) + config.MinYear
+
+                var req *http.Request
+                var err error
+
+                switch method </span>{
+                case "GET":<span class="cov0" title="0">
+                        // Build GET request with URL parameters
+                        reqURL := fmt.Sprintf("%s/income-salary?salary=%d&amp;year=%d", config.Host, salary, year)
+                        req, err = http.NewRequest("GET", reqURL, nil)</span>
+                case "POST":<span class="cov0" title="0">
+                        // Build POST request with form data
+                        data := url.Values{}
+                        data.Set("salary", fmt.Sprintf("%d", salary))
+                        data.Set("year", fmt.Sprintf("%d", year))
+
+                        req, err = http.NewRequest("POST", config.Host+"/income-salary", strings.NewReader(data.Encode()))
+                        req.Header.Set("Content-Type", "application/x-www-form-urlencoded")</span>
+                }
+
+                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                        results &lt;- RequestResult{
+                                Method: method,
+                                Error:  err,
+                        }
+                        continue</span>
+                }
+
+                // Send request and measure time
+                <span class="cov0" title="0">start := time.Now()
+                resp, err := client.Do(req)
+                duration := time.Since(start)
+
+                result := RequestResult{
+                        Method:   method,
+                        Duration: duration,
+                }
+
+                if err != nil </span><span class="cov0" title="0">{
+                        result.Error = err
+                }</span> else<span class="cov0" title="0"> {
+                        result.StatusCode = resp.StatusCode
+
+                        // Count response size
+                        if resp.Body != nil </span><span class="cov0" title="0">{
+                                bodyBytes, _ := io.ReadAll(resp.Body)
+                                result.ContentSize = int64(len(bodyBytes))
+                                resp.Body.Close()
+                        }</span>
+                }
+
+                <span class="cov0" title="0">results &lt;- result</span>
+        }
+}
+
+func outputText(results BenchmarkResults) <span class="cov0" title="0">{
+        fmt.Println("\n--- Benchmark Results ---")
+        fmt.Printf("Total Requests:       %d\n", results.TotalRequests)
+        fmt.Printf("Successful Requests:  %d (%.1f%%)\n",
+                results.SuccessfulRequests,
+                float64(results.SuccessfulRequests)*100/float64(results.TotalRequests))
+        fmt.Printf("Failed Requests:      %d (%.1f%%)\n",
+                results.FailedRequests,
+                float64(results.FailedRequests)*100/float64(results.TotalRequests))
+        fmt.Printf("Total Duration:       %s\n", results.TotalDuration)
+        fmt.Printf("Average Response:     %s\n", results.AvgDuration)
+        fmt.Printf("Min Response:         %s\n", results.MinDuration)
+        fmt.Printf("Max Response:         %s\n", results.MaxDuration)
+        fmt.Printf("Requests Per Second:  %.2f\n", results.RequestsPerSecond)
+        fmt.Printf("Transfer:             %.2f KB\n", float64(results.TotalBytes)/1024)
+        fmt.Printf("Bandwidth:            %.2f KB/s\n", float64(results.BytesPerSecond)/1024)
+
+        fmt.Println("\nResponse Status Codes:")
+        for code, count := range results.StatusCodes </span><span class="cov0" title="0">{
+                fmt.Printf("  HTTP %d:  %d (%.1f%%)\n",
+                        code, count, float64(count)*100/float64(results.TotalRequests))
+        }</span>
+}
+
+func outputJSON(results BenchmarkResults) <span class="cov0" title="0">{
+        // Simple JSON formatting without importing encoding/json
+        fmt.Printf(`{
+  "totalRequests": %d,
+  "successfulRequests": %d,
+  "failedRequests": %d,
+  "totalDurationMs": %d,
+  "avgDurationMs": %.2f,
+  "minDurationMs": %.2f,
+  "maxDurationMs": %.2f,
+  "requestsPerSecond": %.2f,
+  "totalKBytes": %.2f,
+  "kBytesPerSecond": %.2f,
+  "statusCodes": {`,
+                results.TotalRequests,
+                results.SuccessfulRequests,
+                results.FailedRequests,
+                results.TotalDuration.Milliseconds(),
+                float64(results.AvgDuration.Microseconds())/1000,
+                float64(results.MinDuration.Microseconds())/1000,
+                float64(results.MaxDuration.Microseconds())/1000,
+                results.RequestsPerSecond,
+                float64(results.TotalBytes)/1024,
+                float64(results.BytesPerSecond)/1024)
+
+        // Print status codes
+        first := true
+        for code, count := range results.StatusCodes </span><span class="cov0" title="0">{
+                if !first </span><span class="cov0" title="0">{
+                        fmt.Print(",")
+                }</span>
+                <span class="cov0" title="0">fmt.Printf("\n    \"%d\": %d", code, count)
+                first = false</span>
+        }
+        <span class="cov0" title="0">fmt.Println("\n  }\n}")</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "fmt"
+        "net/http"
+        "os"
+
+        "pulsegrade/test1/config"
+        "pulsegrade/test1/handlers"
+        "pulsegrade/test1/logger"
+        "pulsegrade/test1/metrics"
+
+        "github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+func main() <span class="cov0" title="0">{
+        // Get environment from command line args
+        env := "dev" // Default to dev
+        if len(os.Args) &gt; 1 </span><span class="cov0" title="0">{
+                env = os.Args[1]
+        }</span>
+
+        // Log with standard log package until logger is configured
+        <span class="cov0" title="0">fmt.Printf("===&gt; Starting application with environment: %v\n", env)
+
+        // Load configuration from environment variables
+        cfg := config.Load(env)
+
+        // Logger is now configured based on settings from config
+        logger.Info("===&gt; Application starting with environment: %v", env)
+        logger.Debug("===&gt; Loaded configuration: %+v", cfg)
+
+        // Create handlers
+        incomeSalaryHandler := handlers.NewIncomeSalaryHandler(cfg)
+
+        // Create a new ServeMux for route handling
+        mux := http.NewServeMux()
+
+        // Setup application routes
+        mux.HandleFunc("/income-salary", incomeSalaryHandler.Handle)
+
+        // Expose Prometheus metrics endpoint
+        mux.Handle("/metrics", promhttp.Handler())
+
+        // Wrap the ServeMux with the metrics middleware
+        handler := metrics.MetricsMiddleware(mux, env)
+
+        // Log server startup
+        logger.Info("Server started on port %s in %s environment", cfg.Port, env)
+        logger.Info("Metrics available at http://localhost:%s/metrics", cfg.Port)
+
+        // Start the server
+        if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil </span><span class="cov0" title="0">{
+                logger.Fatal("Server failed to start: %v", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package config
+
+import (
+        "log"
+        "path/filepath"
+        "runtime"
+        "strings"
+
+        "pulsegrade/test1/logger"
+        "pulsegrade/test1/models"
+
+        "github.com/spf13/viper"
+)
+
+// Load loads application configuration from YAML files
+func Load(env ...string) models.Config <span class="cov8" title="1">{
+        // Default to "dev" environment if not specified
+        environment := "dev"
+        if len(env) &gt; 0 &amp;&amp; env[0] != "" </span><span class="cov8" title="1">{
+                environment = env[0]
+        }</span>
+
+        // Get the directory where config.go is located to find config files
+        <span class="cov8" title="1">_, currentFilePath, _, _ := runtime.Caller(0)
+        configDir := filepath.Dir(currentFilePath)
+
+        v := viper.New()
+
+        // Set up Viper to read configuration
+        v.SetConfigName("config")  // Base name of the config file
+        v.AddConfigPath(configDir) // Look in the config directory
+        v.SetConfigType("yaml")    // Config type is YAML
+
+        // Set default values in case config files are missing
+        v.SetDefault("taxCalculator.baseUrl", "http://localhost:5001/tax-calculator")
+        v.SetDefault("includeTaxYear", false)
+        v.SetDefault("port", "8080")
+        v.SetDefault("circuitBreakerEnabled", true)         // Default to enabled
+        v.SetDefault("circuitBreaker.requestThreshold", 5)  // Default: 5 requests minimum
+        v.SetDefault("circuitBreaker.failureRatio", 0.5)    // Default: 50% failures
+        v.SetDefault("circuitBreaker.timeout", 60)          // Default: 60 seconds timeout
+        v.SetDefault("circuitBreaker.maxHalfOpenReqs", 100) // Default: 100 requests when half-open
+        v.SetDefault("logging.enabled", true)               // Default: logging enabled
+        v.SetDefault("logging.level", "INFO")               // Default: INFO level logging
+
+        // Try to read the common config file
+        if err := v.ReadInConfig(); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Warning: Could not read config file: %v", err)
+        }</span> else<span class="cov8" title="1"> {
+                log.Printf("Loaded base configuration from %s", v.ConfigFileUsed())
+        }</span>
+
+        // If we're not in dev environment, try to load env-specific config
+        <span class="cov8" title="1">if environment != "dev" </span><span class="cov8" title="1">{
+                v.SetConfigName("config." + environment)
+                if err := v.MergeInConfig(); err != nil </span><span class="cov8" title="1">{
+                        log.Printf("Warning: Could not read environment config for '%s': %v", environment, err)
+                }</span> else<span class="cov8" title="1"> {
+                        log.Printf("Loaded environment configuration from %s", v.ConfigFileUsed())
+                }</span>
+        }
+
+        // Override with environment variables
+        // Environment variables should be prefixed with TAXAPP_
+        // Example: TAXAPP_TAXCALCULATOR_BASEURL will override taxCalculator.baseUrl
+        <span class="cov8" title="1">v.SetEnvPrefix("TAXAPP")
+        v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+        v.AutomaticEnv()
+
+        // Create config with values from Viper
+        config := models.Config{
+                TaxCalcBaseURL:        v.GetString("taxCalculator.baseUrl"),
+                IncludeTaxYear:        v.GetBool("includeTaxYear"),
+                Port:                  v.GetString("port"),
+                Environment:           environment,
+                CircuitBreakerEnabled: v.GetBool("circuitBreakerEnabled"),
+                CircuitBreaker: models.CircuitBreakerConfig{
+                        RequestThreshold: v.GetInt("circuitBreaker.requestThreshold"),
+                        FailureRatio:     v.GetFloat64("circuitBreaker.failureRatio"),
+                        Timeout:          v.GetInt("circuitBreaker.timeout"),
+                        MaxHalfOpenReqs:  v.GetInt("circuitBreaker.maxHalfOpenReqs"),
+                },
+                Logging: models.LoggingConfig{
+                        Enabled: v.GetBool("logging.enabled"),
+                        Level:   v.GetString("logging.level"),
+                },
+        }
+
+        // Configure the logger based on the settings
+        logger.Configure(logger.Config{
+                Enabled: config.Logging.Enabled,
+                Level:   logger.LevelFromString(config.Logging.Level),
+                Output:  nil, // Use default (stdout)
+        })
+
+        // Use our new logger for remaining configuration logs
+        logger.Info("Configuration loaded for environment '%s': TaxCalcBaseURL=%s, IncludeTaxYear=%v, Port=%s, CircuitBreakerEnabled=%v",
+                environment, config.TaxCalcBaseURL, config.IncludeTaxYear, config.Port, config.CircuitBreakerEnabled)
+        logger.Info("Circuit Breaker Config: RequestThreshold=%d, FailureRatio=%.2f, Timeout=%ds, MaxHalfOpenReqs=%d",
+                config.CircuitBreaker.RequestThreshold, config.CircuitBreaker.FailureRatio,
+                config.CircuitBreaker.Timeout, config.CircuitBreaker.MaxHalfOpenReqs)
+        logger.Info("Logging Config: Enabled=%v, Level=%s",
+                config.Logging.Enabled, config.Logging.Level)
+
+        return config</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "strconv"
+        "time"
+
+        "pulsegrade/test1/metrics"
+        "pulsegrade/test1/models"
+        "pulsegrade/test1/services"
+)
+
+// IncomeSalaryHandler handles income and salary tax calculations
+type IncomeSalaryHandler struct {
+        config        models.Config
+        taxCalculator *services.TaxCalculator
+        environment   string
+}
+
+// NewIncomeSalaryHandler creates a new income salary handler
+func NewIncomeSalaryHandler(config models.Config) *IncomeSalaryHandler <span class="cov8" title="1">{
+        return &amp;IncomeSalaryHandler{
+                config:        config,
+                taxCalculator: services.NewTaxCalculatorWithFullConfig(config.Environment, config.CircuitBreakerEnabled, config.CircuitBreaker),
+                environment:   config.Environment,
+        }
+}</span>
+
+// Handle processes income-salary requests
+func (h *IncomeSalaryHandler) Handle(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Set content type
+        w.Header().Set("Content-Type", "application/json")
+
+        // Parse salary and year from URL query and/or request body
+        salary, year, err := h.parseSalary(r)
+        if err != nil </span><span class="cov0" title="0">{
+                h.respondWithError(w, http.StatusBadRequest, err.Error())
+                return
+        }</span>
+
+        // Determine tax calculator URL based on configuration
+        <span class="cov8" title="1">taxCalcURL := h.config.TaxCalcBaseURL
+        if h.config.IncludeTaxYear </span><span class="cov0" title="0">{
+                // Use provided year if available, otherwise use current year
+                taxYear := time.Now().Year()
+                if year &gt; 0 </span><span class="cov0" title="0">{
+                        taxYear = year
+                }</span>
+                <span class="cov0" title="0">taxCalcURL = fmt.Sprintf("%s/tax-year/%d", h.config.TaxCalcBaseURL, taxYear)</span>
+        }
+
+        // Forward request to tax calculator
+        <span class="cov8" title="1">taxResponse, err := h.taxCalculator.FetchTaxData(taxCalcURL)
+        if err != nil </span><span class="cov0" title="0">{
+                // Increment tax service error metric with environment label
+                metrics.TaxServiceErrors.WithLabelValues(h.environment).Inc()
+                h.respondWithError(w, http.StatusInternalServerError, "Error calculating tax: "+err.Error())
+                return
+        }</span>
+
+        // Calculate tax based on brackets and salary
+        <span class="cov8" title="1">tax, effectiveRate := h.taxCalculator.CalculateTax(salary, taxResponse.TaxBrackets)
+
+        // Increment tax calculation metric with environment label
+        metrics.TaxCalculationTotal.WithLabelValues(h.environment).Inc()
+
+        // Respond to client
+        response := models.Response{
+                Salary:        salary,
+                Tax:           tax,
+                EffectiveRate: effectiveRate,
+                Metadata: map[string]interface{}{
+                        "calculatedAt":  time.Now().Format(time.RFC3339),
+                        "taxServiceURL": taxCalcURL,
+                },
+        }
+
+        json.NewEncoder(w).Encode(response)</span>
+}
+
+func (h *IncomeSalaryHandler) parseSalary(r *http.Request) (float64, int, error) <span class="cov8" title="1">{
+        // Try to get salary from URL parameters
+        salaryStr := r.URL.Query().Get("salary")
+        yearStr := r.URL.Query().Get("year")
+
+        // If not in URL, try to get from request body
+        if salaryStr == "" || yearStr == "" </span><span class="cov8" title="1">{
+                if r.Method == http.MethodPost </span><span class="cov8" title="1">{
+                        if err := r.ParseForm(); err != nil </span><span class="cov0" title="0">{
+                                return 0, 0, fmt.Errorf("invalid form data: %v", err)
+                        }</span>
+                        <span class="cov8" title="1">if salaryStr == "" </span><span class="cov8" title="1">{
+                                salaryStr = r.PostForm.Get("salary")
+                        }</span>
+                        <span class="cov8" title="1">if yearStr == "" </span><span class="cov8" title="1">{
+                                yearStr = r.PostForm.Get("year")
+                        }</span>
+                }
+        }
+
+        // Check if we have a salary value
+        <span class="cov8" title="1">if salaryStr == "" </span><span class="cov8" title="1">{
+                return 0, 0, fmt.Errorf("salary parameter is required")
+        }</span>
+
+        // Parse salary to float
+        <span class="cov8" title="1">salary, err := strconv.ParseFloat(salaryStr, 64)
+        if err != nil </span><span class="cov8" title="1">{
+                return 0, 0, fmt.Errorf("invalid salary format: %v", err)
+        }</span>
+
+        // Parse year if provided, otherwise default to 0
+        <span class="cov8" title="1">year := 0
+        if yearStr != "" </span><span class="cov8" title="1">{
+                year, err = strconv.Atoi(yearStr)
+                if err != nil </span><span class="cov8" title="1">{
+                        return 0, 0, fmt.Errorf("invalid year format: %v", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return salary, year, nil</span>
+}
+
+func (h *IncomeSalaryHandler) respondWithError(w http.ResponseWriter, statusCode int, message string) <span class="cov0" title="0">{
+        w.WriteHeader(statusCode)
+        response := models.Response{
+                Error: message,
+        }
+        json.NewEncoder(w).Encode(response)
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Package logger provides a configurable logging facility that can be enabled or disabled
+package logger
+
+import (
+        "fmt"
+        "io"
+        "log"
+        "os"
+        "sync"
+)
+
+// LogLevel represents the verbosity level of logging
+type LogLevel int
+
+// Available log levels
+const (
+        LevelNone  LogLevel = iota // No logging
+        LevelError                 // Only errors
+        LevelWarn                  // Warnings and errors
+        LevelInfo                  // Informational messages, warnings, and errors
+        LevelDebug                 // Debug messages, informational messages, warnings, and errors
+)
+
+var (
+        // Default logger instance
+        defaultLogger *Logger
+        // once          sync.Once
+)
+
+// Logger wraps the standard log package with additional features
+type Logger struct {
+        enabled bool
+        level   LogLevel
+        logger  *log.Logger
+        mu      sync.Mutex
+}
+
+// Config holds configuration for the logger
+type Config struct {
+        Enabled bool
+        Level   LogLevel
+        Output  io.Writer
+}
+
+// init initializes the default logger
+func init() <span class="cov8" title="1">{
+        defaultLogger = &amp;Logger{
+                enabled: true,
+                level:   LevelInfo,
+                logger:  log.New(os.Stdout, "", log.LstdFlags),
+        }
+}</span>
+
+// New creates a new logger with the provided configuration
+func New(config Config) *Logger <span class="cov0" title="0">{
+        output := config.Output
+        if output == nil </span><span class="cov0" title="0">{
+                output = os.Stdout
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Logger{
+                enabled: config.Enabled,
+                level:   config.Level,
+                logger:  log.New(output, "", log.LstdFlags),
+        }</span>
+}
+
+// SetDefault sets the default logger instance
+func SetDefault(l *Logger) <span class="cov0" title="0">{
+        defaultLogger = l
+}</span>
+
+// Configure configures the default logger
+func Configure(config Config) <span class="cov8" title="1">{
+        output := config.Output
+        if output == nil </span><span class="cov8" title="1">{
+                output = os.Stdout
+        }</span>
+
+        <span class="cov8" title="1">defaultLogger.mu.Lock()
+        defer defaultLogger.mu.Unlock()
+
+        defaultLogger.enabled = config.Enabled
+        defaultLogger.level = config.Level
+        defaultLogger.logger = log.New(output, "", log.LstdFlags)</span>
+}
+
+// // SetEnabled enables or disables logging for the default logger
+// func SetEnabled(enabled bool) {
+//         defaultLogger.mu.Lock()
+//         defer defaultLogger.mu.Unlock()
+//         defaultLogger.enabled = enabled
+// }
+
+// // SetLevel sets the log level for the default logger
+// func SetLevel(level LogLevel) {
+//         defaultLogger.mu.Lock()
+//         defer defaultLogger.mu.Unlock()
+//         defaultLogger.level = level
+// }
+
+// Debug logs a debug message if the logger is enabled and level is appropriate
+func Debug(format string, v ...interface{}) <span class="cov0" title="0">{
+        if defaultLogger.enabled &amp;&amp; defaultLogger.level &gt;= LevelDebug </span><span class="cov0" title="0">{
+                defaultLogger.logger.Printf("[DEBUG] "+format, v...)
+        }</span>
+}
+
+// Info logs an info message if the logger is enabled and level is appropriate
+func Info(format string, v ...interface{}) <span class="cov8" title="1">{
+        if defaultLogger.enabled &amp;&amp; defaultLogger.level &gt;= LevelInfo </span><span class="cov8" title="1">{
+                defaultLogger.logger.Printf("[INFO] "+format, v...)
+        }</span>
+}
+
+// Warn logs a warning message if the logger is enabled and level is appropriate
+func Warn(format string, v ...interface{}) <span class="cov0" title="0">{
+        if defaultLogger.enabled &amp;&amp; defaultLogger.level &gt;= LevelWarn </span><span class="cov0" title="0">{
+                defaultLogger.logger.Printf("[WARN] "+format, v...)
+        }</span>
+}
+
+// Error logs an error message if the logger is enabled and level is appropriate
+func Error(format string, v ...interface{}) <span class="cov0" title="0">{
+        if defaultLogger.enabled &amp;&amp; defaultLogger.level &gt;= LevelError </span><span class="cov0" title="0">{
+                defaultLogger.logger.Printf("[ERROR] "+format, v...)
+        }</span>
+}
+
+// Fatal logs a fatal error message and exits
+func Fatal(format string, v ...interface{}) <span class="cov0" title="0">{
+        if defaultLogger.enabled </span><span class="cov0" title="0">{
+                defaultLogger.logger.Fatalf("[FATAL] "+format, v...)
+        }</span>
+        // Even if logging is disabled, we still need to exit
+        <span class="cov0" title="0">os.Exit(1)</span>
+}
+
+// Methods for Logger instance
+
+// Debug logs a debug message using the logger instance
+func (l *Logger) Debug(format string, v ...interface{}) <span class="cov0" title="0">{
+        if l.enabled &amp;&amp; l.level &gt;= LevelDebug </span><span class="cov0" title="0">{
+                l.logger.Printf("[DEBUG] "+format, v...)
+        }</span>
+}
+
+// Info logs an info message using the logger instance
+func (l *Logger) Info(format string, v ...interface{}) <span class="cov0" title="0">{
+        if l.enabled &amp;&amp; l.level &gt;= LevelInfo </span><span class="cov0" title="0">{
+                l.logger.Printf("[INFO] "+format, v...)
+        }</span>
+}
+
+// Warn logs a warning message using the logger instance
+func (l *Logger) Warn(format string, v ...interface{}) <span class="cov0" title="0">{
+        if l.enabled &amp;&amp; l.level &gt;= LevelWarn </span><span class="cov0" title="0">{
+                l.logger.Printf("[WARN] "+format, v...)
+        }</span>
+}
+
+// Error logs an error message using the logger instance
+func (l *Logger) Error(format string, v ...interface{}) <span class="cov0" title="0">{
+        if l.enabled &amp;&amp; l.level &gt;= LevelError </span><span class="cov0" title="0">{
+                l.logger.Printf("[ERROR] "+format, v...)
+        }</span>
+}
+
+// Fatal logs a fatal error message and exits
+func (l *Logger) Fatal(format string, v ...interface{}) <span class="cov0" title="0">{
+        if l.enabled </span><span class="cov0" title="0">{
+                l.logger.Fatalf("[FATAL] "+format, v...)
+        }</span>
+        // Even if logging is disabled, we still need to exit
+        <span class="cov0" title="0">os.Exit(1)</span>
+}
+
+// String returns a string representation of the log level
+func (l LogLevel) String() string <span class="cov0" title="0">{
+        switch l </span>{
+        case LevelNone:<span class="cov0" title="0">
+                return "NONE"</span>
+        case LevelError:<span class="cov0" title="0">
+                return "ERROR"</span>
+        case LevelWarn:<span class="cov0" title="0">
+                return "WARN"</span>
+        case LevelInfo:<span class="cov0" title="0">
+                return "INFO"</span>
+        case LevelDebug:<span class="cov0" title="0">
+                return "DEBUG"</span>
+        default:<span class="cov0" title="0">
+                return fmt.Sprintf("LogLevel(%d)", l)</span>
+        }
+}
+
+// LevelFromString converts a string to a LogLevel
+func LevelFromString(level string) LogLevel <span class="cov8" title="1">{
+        switch level </span>{
+        case "NONE":<span class="cov0" title="0">
+                return LevelNone</span>
+        case "ERROR":<span class="cov0" title="0">
+                return LevelError</span>
+        case "WARN":<span class="cov8" title="1">
+                return LevelWarn</span>
+        case "INFO":<span class="cov0" title="0">
+                return LevelInfo</span>
+        case "DEBUG":<span class="cov8" title="1">
+                return LevelDebug</span>
+        default:<span class="cov0" title="0">
+                return LevelInfo</span> // Default to INFO if not recognized
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package metrics
+
+import (
+        "net/http"
+        "strconv"
+        "time"
+)
+
+// MetricsMiddleware wraps an HTTP handler with metrics instrumentation
+func MetricsMiddleware(next http.Handler, environment string) http.Handler <span class="cov0" title="0">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                // Create a response writer wrapper to capture the status code
+                rww := &amp;responseWriterWrapper{
+                        ResponseWriter: w,
+                        statusCode:     http.StatusOK, // Default to 200 OK
+                }
+
+                // Record start time
+                startTime := time.Now()
+
+                // Call the next handler
+                next.ServeHTTP(rww, r)
+
+                // Record duration
+                duration := time.Since(startTime).Seconds()
+
+                // Extract path for the metrics label (could be improved with route pattern matching)
+                endpoint := r.URL.Path
+
+                // Record metrics
+                HttpRequestsTotal.WithLabelValues(endpoint, r.Method, strconv.Itoa(rww.statusCode), environment).Inc()
+                HttpRequestDuration.WithLabelValues(endpoint, r.Method, environment).Observe(duration)
+        }</span>)
+}
+
+// responseWriterWrapper is a custom response writer that captures the status code
+type responseWriterWrapper struct {
+        http.ResponseWriter
+        statusCode int
+}
+
+// WriteHeader captures the status code before calling the wrapped ResponseWriter
+func (rww *responseWriterWrapper) WriteHeader(statusCode int) <span class="cov0" title="0">{
+        rww.statusCode = statusCode
+        rww.ResponseWriter.WriteHeader(statusCode)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package services
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "math"
+        "net/http"
+        "os"
+        "strings"
+        "time"
+
+        "pulsegrade/test1/logger"
+        "pulsegrade/test1/metrics"
+        "pulsegrade/test1/models"
+
+        "github.com/sony/gobreaker"
+)
+
+// TaxCalculator provides tax calculation functionality
+type TaxCalculator struct {
+        cb          *gobreaker.CircuitBreaker
+        environment string
+        cbEnabled   bool // Flag indicating if circuit breaker is enabled
+}
+
+// NewTaxCalculator creates a new TaxCalculator with a configured circuit breaker
+func NewTaxCalculator() *TaxCalculator <span class="cov8" title="1">{
+        // Determine environment (default to "dev" if not set)
+        environment := os.Getenv("APP_ENV")
+        if environment == "" </span><span class="cov8" title="1">{
+                environment = "dev"
+        }</span>
+
+        <span class="cov8" title="1">return NewTaxCalculatorWithEnv(environment)</span>
+}
+
+// NewTaxCalculatorWithEnv creates a new TaxCalculator with a specified environment
+func NewTaxCalculatorWithEnv(environment string) *TaxCalculator <span class="cov8" title="1">{
+        // Default to enabled
+        return NewTaxCalculatorWithConfig(environment, true)
+}</span>
+
+// NewTaxCalculatorWithConfig creates a new TaxCalculator with a specified environment and circuit breaker toggle
+func NewTaxCalculatorWithConfig(environment string, circuitBreakerEnabled bool) *TaxCalculator <span class="cov8" title="1">{
+        // Use the default configuration
+        cbConfig := models.CircuitBreakerConfig{
+                RequestThreshold: 5,
+                FailureRatio:     0.5,
+                Timeout:          60,
+                MaxHalfOpenReqs:  100,
+        }
+
+        return NewTaxCalculatorWithFullConfig(environment, circuitBreakerEnabled, cbConfig)
+}</span>
+
+// NewTaxCalculatorWithFullConfig creates a new TaxCalculator with complete configuration
+func NewTaxCalculatorWithFullConfig(environment string, circuitBreakerEnabled bool, cbConfig models.CircuitBreakerConfig) *TaxCalculator <span class="cov8" title="1">{
+        calculator := &amp;TaxCalculator{
+                environment: environment,
+                cbEnabled:   circuitBreakerEnabled,
+        }
+
+        if circuitBreakerEnabled </span><span class="cov8" title="1">{
+                // Set up the circuit breaker only if enabled
+                cbName := "tax-service"
+                settings := gobreaker.Settings{
+                        Name:        cbName,
+                        MaxRequests: uint32(cbConfig.MaxHalfOpenReqs),
+                        Interval:    0, // No forced reset based on time (reset only by success/failure events)
+                        Timeout:     time.Duration(cbConfig.Timeout) * time.Second,
+                        ReadyToTrip: func(counts gobreaker.Counts) bool </span><span class="cov8" title="1">{
+                                // Trip the circuit based on configured threshold and ratio
+                                failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+                                return counts.Requests &gt;= uint32(cbConfig.RequestThreshold) &amp;&amp; failureRatio &gt;= cbConfig.FailureRatio
+                        }</span>,
+                        OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) <span class="cov0" title="0">{
+                                logger.Info("Circuit breaker '%s' changed from '%v' to '%v' [threshold=%d, ratio=%.2f]",
+                                        name, from, to, cbConfig.RequestThreshold, cbConfig.FailureRatio)
+
+                                // Record state change in metrics (1=closed, 2=half-open, 3=open)
+                                var stateValue float64
+                                switch to </span>{
+                                case gobreaker.StateClosed:<span class="cov0" title="0">
+                                        stateValue = 1</span>
+                                case gobreaker.StateHalfOpen:<span class="cov0" title="0">
+                                        stateValue = 2</span>
+                                case gobreaker.StateOpen:<span class="cov0" title="0">
+                                        stateValue = 3</span>
+                                }
+                                <span class="cov0" title="0">metrics.CircuitBreakerState.WithLabelValues(name, environment).Set(stateValue)</span>
+                        },
+                }
+
+                <span class="cov8" title="1">calculator.cb = gobreaker.NewCircuitBreaker(settings)
+
+                // Initialize the circuit breaker state metric to "closed" (1)
+                metrics.CircuitBreakerState.WithLabelValues(cbName, environment).Set(1)</span>
+        }
+
+        <span class="cov8" title="1">return calculator</span>
+}
+
+// CalculateTax computes the tax amount based on salary and tax brackets
+func (tc *TaxCalculator) CalculateTax(salary float64, brackets []models.TaxBracket) (float64, float64) <span class="cov8" title="1">{
+        var totalTax float64 = 0
+        var effectiveRate float64 = 0
+
+        for _, bracket := range brackets </span><span class="cov8" title="1">{
+                // skip if we are below this bracket
+                if salary &lt;= bracket.Min </span><span class="cov8" title="1">{
+                        break</span>
+                }
+
+                <span class="cov8" title="1">var taxableAmount float64
+
+                // For brackets with a maximum
+                if bracket.Max != 0 </span><span class="cov8" title="1">{
+                        // If salary is within this bracket
+                        if salary &lt;= bracket.Max </span><span class="cov8" title="1">{
+                                taxableAmount = salary - bracket.Min
+                        }</span> else<span class="cov8" title="1"> {
+                                // If salary exceeds this bracket
+                                taxableAmount = bracket.Max - bracket.Min
+                        }</span>
+                } else<span class="cov8" title="1"> {
+                        // For the highest bracket (no maximum)
+                        taxableAmount = salary - bracket.Min
+                }</span>
+
+                // Add tax for this bracket
+                <span class="cov8" title="1">totalTax += taxableAmount * bracket.Rate</span>
+        }
+        <span class="cov8" title="1">effectiveRate = math.Round((totalTax/salary)*1000) / 1000 // Rounded to 3 decimal places
+
+        return totalTax, effectiveRate</span>
+}
+
+// FetchTaxData retrieves tax bracket data from the tax calculator service
+func (tc *TaxCalculator) FetchTaxData(url string) (*models.TaxCalculatorResponse, error) <span class="cov8" title="1">{
+
+        if tc.cbEnabled &amp;&amp; tc.cb != nil </span><span class="cov8" title="1">{
+                // Execute the request through the circuit breaker if enabled
+                response, err := tc.cb.Execute(func() (interface{}, error) </span><span class="cov8" title="1">{
+                        return tc.doFetchTaxData(url)
+                }</span>)
+
+                <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                        if err == gobreaker.ErrOpenState </span><span class="cov0" title="0">{
+                                // Record rejected request due to open circuit
+                                metrics.CircuitBreakerRejected.WithLabelValues("tax-service", tc.environment).Inc()
+                                return nil, fmt.Errorf("tax calculator service is unavailable (circuit open): too many recent failures")
+                        }</span> else<span class="cov8" title="1"> if err == gobreaker.ErrTooManyRequests </span><span class="cov0" title="0">{
+                                metrics.CircuitBreakerRejected.WithLabelValues("tax-service", tc.environment).Inc()
+                                return nil, fmt.Errorf("tax calculator service is unavailable: too many concurrent requests")
+                        }</span>
+
+                        // Record failure but not a rejection (normal error)
+                        <span class="cov8" title="1">metrics.CircuitBreakerRequests.WithLabelValues("tax-service", "false", tc.environment).Inc()
+                        metrics.TaxServiceErrors.WithLabelValues(tc.environment).Inc()
+
+                        return nil, fmt.Errorf("tax calculator service error: %v", err)</span>
+                }
+
+                // Record successful request
+                <span class="cov8" title="1">metrics.CircuitBreakerRequests.WithLabelValues("tax-service", "true", tc.environment).Inc()
+
+                // Cast the response back to the expected type
+                return response.(*models.TaxCalculatorResponse), nil</span>
+        } else<span class="cov0" title="0"> {
+                // If circuit breaker is disabled, call the fetch method directly
+                response, err := tc.doFetchTaxData(url)
+
+                if err != nil </span><span class="cov0" title="0">{
+                        // Still track errors in metrics
+                        metrics.TaxServiceErrors.WithLabelValues(tc.environment).Inc()
+                        return nil, fmt.Errorf("tax calculator service error: %v", err)
+                }</span>
+
+                <span class="cov0" title="0">return response, nil</span>
+        }
+}
+
+// doFetchTaxData performs the actual HTTP request to the tax service
+// This is wrapped by the circuit breaker in FetchTaxData
+func (tc *TaxCalculator) doFetchTaxData(url string) (*models.TaxCalculatorResponse, error) <span class="cov8" title="1">{
+
+        // Create a new request
+        req, err := http.NewRequest("GET", url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Send request with a more reasonable timeout
+        <span class="cov8" title="1">client := &amp;http.Client{Timeout: 35 * time.Second} // Reduced from 10s to 5s for faster failure detection
+
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("===&gt; Error forwarding request: %v", err)
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        // Check status code
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                // Try to read error details from response body
+                errorBody, readErr := ioutil.ReadAll(resp.Body)
+                if readErr == nil &amp;&amp; len(errorBody) &gt; 0 </span><span class="cov0" title="0">{
+                        // Try to parse as JSON with 'errors' field containing array of error objects
+                        var errorResponse struct {
+                                Errors []models.TaxCalcError `json:"errors"`
+                        }
+                        if jsonErr := json.Unmarshal(errorBody, &amp;errorResponse); jsonErr == nil &amp;&amp; len(errorResponse.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                                // Format error message from the structured error data
+                                errorMessages := make([]string, 0, len(errorResponse.Errors))
+                                for _, taxError := range errorResponse.Errors </span><span class="cov0" title="0">{
+                                        errorMsg := fmt.Sprintf("%s: %s", taxError.Code, taxError.Message)
+                                        errorMessages = append(errorMessages, errorMsg)
+                                }</span>
+                                <span class="cov0" title="0">return nil, fmt.Errorf("tax calculator service error: %s", strings.Join(errorMessages, "; "))</span>
+                        }
+                        // Fallback to using raw error body
+                        <span class="cov0" title="0">return nil, fmt.Errorf("tax calculator service returned: %d - Details: %s", resp.StatusCode, string(errorBody))</span>
+                }
+                <span class="cov8" title="1">return nil, fmt.Errorf("tax calculator service returned error code: %d", resp.StatusCode)</span>
+        }
+
+        // Read and parse response
+        <span class="cov8" title="1">body, err := ioutil.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("===&gt; Error reading response body: %v", err)
+                return nil, err
+        }</span>
+
+        // Parse tax brackets from response
+        <span class="cov8" title="1">var taxResponse models.TaxCalculatorResponse
+        if err := json.Unmarshal(body, &amp;taxResponse); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to parse tax calculator response: %v", err)
+        }</span>
+
+        // Validate response
+        <span class="cov8" title="1">if len(taxResponse.TaxBrackets) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("no tax brackets returned from tax calculator")
+        }</span>
+
+        <span class="cov8" title="1">return &amp;taxResponse, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

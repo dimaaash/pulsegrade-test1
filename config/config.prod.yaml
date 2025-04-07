@@ -1,0 +1,16 @@
+# Production environment configuration
+taxCalculator:
+  baseUrl: http://localhost:5001/tax-calculator
+includeTaxYear: true
+port: "8081"
+# Production environment circuit breaker settings - more tolerant
+circuitBreaker:
+  requestThreshold: 20   # Trip after at least 20 requests (more tolerant than dev)
+  failureRatio: 0.5      # 60% failure rate to trip (more tolerant)
+  timeout: 120           # 120 seconds before trying half-open state (longer recovery)
+  maxHalfOpenReqs: 50    # More conservative with half-open requests
+# Production logging configuration - less verbose
+logging:
+  enabled: true        # Logging is enabled (can be toggled off during high load)
+  level: "WARN"        # Only log warnings and errors in production
+

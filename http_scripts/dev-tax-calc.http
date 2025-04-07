@@ -1,0 +1,8 @@
+@host = http://localhost:5001
+
+### Track UPS endpoint
+GET {{host}}/tax-calculator
+
+
+
+
